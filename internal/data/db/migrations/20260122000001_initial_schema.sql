@@ -52,6 +52,7 @@ CREATE TABLE reviews (
     review_date DATETIME NOT NULL,
     completed BOOLEAN NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
     FOREIGN KEY (problem_id) REFERENCES problems(id) ON DELETE CASCADE
 );
 

@@ -9,14 +9,28 @@ import (
 	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
-	dbgen "github.com/michael-duren/grind-75-cli/internal/data/db/gen"
+	"github.com/michael-duren/grind-75-cli/internal/data/db/dbgen"
 	"github.com/pressly/goose/v3"
 )
 
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
-func InitDB(dbPath string) (*sql.DB, error) {
+// Service represents a service that interacts with a database.
+type Service interface {
+	// Health returns a map of health status information.
+	// The keys and values in the map are service-specific.
+	Health() map[string]string
+	DB() *sql.DB
+	// Conn() *pgx.Conn
+	Queries() *dbgen.Queries
+
+	// Close terminates the database connection.
+	// It returns an error if the connection cannot be closed.
+	Close() error
+}
+
+func InitServices(dbPath string) (Service, error) {
 	// Ensure directory exists
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -49,7 +63,39 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to seed database: %w", err)
 	}
 
-	return db, nil
+	return newService(db)
+}
+
+type service struct {
+	db      *sql.DB
+	queries *dbgen.Queries
+}
+
+func (s *service) Health() map[string]string {
+	return map[string]string{
+		"status": "ok",
+	}
+}
+
+func (s *service) DB() *sql.DB {
+	return s.db
+}
+
+func (s *service) Queries() *dbgen.Queries {
+	return s.queries
+}
+
+func (s *service) Close() error {
+	return s.db.Close()
+}
+
+func newService(db *sql.DB) (Service, error) {
+	s := &service{
+		db:      db,
+		queries: dbgen.New(db),
+	}
+
+	return s, nil
 }
 
 func checkAndSeed(db *sql.DB) error {

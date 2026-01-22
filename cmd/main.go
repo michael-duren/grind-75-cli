@@ -33,7 +33,7 @@ var rootCmd = &cobra.Command{
 		}
 		dbPath := filepath.Join(home, ".g7c", "grind75.db")
 
-		database, err := db.InitDB(dbPath)
+		database, err := db.InitServices(dbPath)
 		if err != nil {
 			slog.Error("Failed to initialize database", "err", err)
 			os.Exit(1)

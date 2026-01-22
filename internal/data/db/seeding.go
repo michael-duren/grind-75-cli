@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/michael-duren/grind-75-cli/internal/data"
-	dbgen "github.com/michael-duren/grind-75-cli/internal/data/db/gen"
+	"github.com/michael-duren/grind-75-cli/internal/data/db/dbgen"
 )
 
 // Seed populates the database with the default Grind 75 questions.

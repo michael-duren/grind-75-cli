@@ -1,9 +1,8 @@
 package ui
 
 import (
-	"database/sql"
-
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/michael-duren/grind-75-cli/internal/data/db"
 	"github.com/michael-duren/grind-75-cli/internal/ui/controllers"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
 	"github.com/michael-duren/grind-75-cli/internal/ui/views"
@@ -13,9 +12,9 @@ type Model struct {
 	AppModel *models.AppModel
 }
 
-func NewApp(db *sql.DB) Model {
+func NewApp(services db.Service) Model {
 	return Model{
-		AppModel: models.NewAppModel(db),
+		AppModel: models.NewAppModel(services),
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
-	dbgen "github.com/michael-duren/grind-75-cli/internal/data/db/gen"
+	"github.com/michael-duren/grind-75-cli/internal/data/db/dbgen"
 )
 
 func TestSeed(t *testing.T) {

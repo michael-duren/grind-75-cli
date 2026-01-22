@@ -1,7 +1,7 @@
 package models
 
 import (
-	"database/sql"
+	"github.com/michael-duren/grind-75-cli/internal/data/db"
 )
 
 type WindowDimensions struct {
@@ -18,7 +18,7 @@ const (
 )
 
 type AppModel struct {
-	DB *sql.DB
+	Services db.Service
 
 	*WindowDimensions
 	BodyDimensions *WindowDimensions
@@ -30,9 +30,9 @@ type AppModel struct {
 	Settings *SettingsModel
 }
 
-func NewAppModel(db *sql.DB) *AppModel {
+func NewAppModel(services db.Service) *AppModel {
 	return &AppModel{
-		DB:               db,
+		Services:         services,
 		WindowDimensions: &WindowDimensions{},
 		BodyDimensions:   &WindowDimensions{},
 		CurrentView:      HomePath,

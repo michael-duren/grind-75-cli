@@ -1,5 +1,7 @@
 # Grind 75 CLI (G7C)
 
+> [!WARNING] This is in active development
+
 A terminal-based progress tracker for the Grind 75 coding challenge with customizable study plans and email reminders.
 
 ## Table of Contents

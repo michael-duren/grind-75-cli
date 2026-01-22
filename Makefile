@@ -14,3 +14,7 @@ debug:
 # generate sqlc files
 sqlc:
 	@sqlc generate -f internal/data/db/sqlc.yaml
+
+# WARNING: This will delete all your local state!
+state-reset:
+	@rm -rf ~/.g7c

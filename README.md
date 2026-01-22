@@ -63,14 +63,44 @@ g7c
 ### Commands
 
 G7C is built using [Cobra](https://github.com/spf13/cobra) for command line parsing.
-The main commands are:
 
-- `g7c` - Launch the TUI
-- `g7c setup-email` - Setup SMTP email configuration (stores password in system keychain)
-- `g7c check-reminders` - Check for any reminders to send (can be added to cron)
-- `g7c cron`
-  - `on` - Setup a cron job to run `g7c check-reminders` every day at midnight
-  - `off` - Remove the cron job
+**Main Commands:**
+
+- `g7c` - Launch the interactive TUI
+- `g7c setup-email` - Configure SMTP settings (securely stores password in system keychain)
+- `g7c check-reminders` - Manually check and send pending reminders (useful for testing or custom cron setup)
+- `g7c cron on/off` - Enable or disable automatic daily reminders via cron job (runs at midnight)
+- `g7c scaffold <path>` - Generate a practice directory structure for solving problems in your editor (currently supports Go only)
+
+**Scaffold Directory Structure:**
+
+The `scaffold` command creates an organized workspace for practicing outside the browser:
+
+```
+grind-75-practice/
+├── go.mod
+├── main.go
+├── easy/
+│   └── ...easy-problem-files
+├── medium/
+│   └── ...medium-problem-files
+└── hard/
+    └── ...hard-problem-files
+```
+
+Each problem file includes starter code and test cases to get you coding immediately.
+
+#### Directory Structure
+
+- grind-75-practice
+  go.mod
+  main.go
+  - easy
+    ...easy-problems
+  - medium
+    ...med-problems
+  - hard
+    ...hard-problems
 
 ### TUI Navigation
 

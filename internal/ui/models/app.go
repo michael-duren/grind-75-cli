@@ -24,10 +24,13 @@ type AppModel struct {
 	BodyDimensions *WindowDimensions
 
 	CurrentView CurrentView
+	Error       string
 
 	// Sub-Models
 	Home     *HomeModel
 	Settings *SettingsModel
+	// May delete later just here for structure
+	Help *HelpModel
 }
 
 func NewAppModel(services db.Service) *AppModel {
@@ -39,5 +42,6 @@ func NewAppModel(services db.Service) *AppModel {
 
 		Home:     NewHomeModel(),
 		Settings: NewSettingsModel(),
+		Help:     NewHelpModel(),
 	}
 }

@@ -84,6 +84,77 @@ func (q *Queries) CreateTopic(ctx context.Context, arg CreateTopicParams) error 
 	return err
 }
 
+const getAllProblemReviews = `-- name: GetAllProblemReviews :many
+SELECT id, problem_id, review_date, completed, created_at, notes FROM reviews
+ORDER BY problem_id, review_date DESC
+`
+
+func (q *Queries) GetAllProblemReviews(ctx context.Context) ([]Review, error) {
+	rows, err := q.db.QueryContext(ctx, getAllProblemReviews)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Review
+	for rows.Next() {
+		var i Review
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProblemID,
+			&i.ReviewDate,
+			&i.Completed,
+			&i.CreatedAt,
+			&i.Notes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllProblemTopics = `-- name: GetAllProblemTopics :many
+SELECT pt.problem_id, t.id, t.name
+FROM problem_topics pt
+JOIN topics t ON pt.topic_id = t.id
+ORDER BY pt.problem_id, t.name
+`
+
+type GetAllProblemTopicsRow struct {
+	ProblemID int64  `db:"problem_id" json:"problem_id"`
+	ID        string `db:"id" json:"id"`
+	Name      string `db:"name" json:"name"`
+}
+
+func (q *Queries) GetAllProblemTopics(ctx context.Context) ([]GetAllProblemTopicsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllProblemTopics)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllProblemTopicsRow
+	for rows.Next() {
+		var i GetAllProblemTopicsRow
+		if err := rows.Scan(&i.ProblemID, &i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDifficulty = `-- name: GetDifficulty :one
 SELECT id, name FROM difficulty_levels
 WHERE id = ?
@@ -327,6 +398,71 @@ func (q *Queries) ListTopics(ctx context.Context) ([]Topic, error) {
 	for rows.Next() {
 		var i Topic
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserProblems = `-- name: ListUserProblems :many
+SELECT 
+  p.id AS problem_id, 
+  p.slug, 
+  p.title, 
+  p.url, 
+  p.duration, 
+  dl.id AS difficulty_id,
+  dl.name AS difficulty_name,
+  up.status,
+  up.last_attempted_at,
+  up.attempts
+FROM problems p
+LEFT JOIN user_progress up ON p.id = up.problem_id
+LEFT JOIN difficulty_levels dl ON p.difficulty_id = dl.id
+ORDER BY p.id
+`
+
+type ListUserProblemsRow struct {
+	ProblemID       int64          `db:"problem_id" json:"problem_id"`
+	Slug            string         `db:"slug" json:"slug"`
+	Title           string         `db:"title" json:"title"`
+	Url             string         `db:"url" json:"url"`
+	Duration        int64          `db:"duration" json:"duration"`
+	DifficultyID    sql.NullString `db:"difficulty_id" json:"difficulty_id"`
+	DifficultyName  sql.NullString `db:"difficulty_name" json:"difficulty_name"`
+	Status          sql.NullString `db:"status" json:"status"`
+	LastAttemptedAt sql.NullTime   `db:"last_attempted_at" json:"last_attempted_at"`
+	Attempts        sql.NullInt64  `db:"attempts" json:"attempts"`
+}
+
+func (q *Queries) ListUserProblems(ctx context.Context) ([]ListUserProblemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUserProblems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserProblemsRow
+	for rows.Next() {
+		var i ListUserProblemsRow
+		if err := rows.Scan(
+			&i.ProblemID,
+			&i.Slug,
+			&i.Title,
+			&i.Url,
+			&i.Duration,
+			&i.DifficultyID,
+			&i.DifficultyName,
+			&i.Status,
+			&i.LastAttemptedAt,
+			&i.Attempts,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

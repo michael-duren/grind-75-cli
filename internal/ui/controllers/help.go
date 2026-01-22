@@ -33,10 +33,7 @@ func Help(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		}
 
 		// Calc height
-		height := m.Height - 10
-		if height < 5 {
-			height = 5
-		}
+		height := max(m.Height-10, 5)
 
 		t := table.New(
 			table.WithColumns(columns),
@@ -70,10 +67,7 @@ func Help(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			return m, nil
 		}
 	case tea.WindowSizeMsg:
-		h := msg.Height - 10
-		if h < 5 {
-			h = 5
-		}
+		h := max(msg.Height-10, 5)
 		m.Help.Table.SetHeight(h)
 	}
 

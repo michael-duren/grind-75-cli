@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/michael-duren/grind-75-cli/internal/data/db/dbgen"
 )
 
@@ -39,7 +40,10 @@ type UserProblemWithRelations struct {
 }
 
 type HomeModel struct {
-	Problems []UserProblemWithRelations
+	Problems         []UserProblemWithRelations
+	Table            table.Model
+	TableInitialized bool
+	SelectedCol      int
 }
 
 func NewHomeModel() *HomeModel {

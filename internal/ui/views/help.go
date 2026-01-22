@@ -1,32 +1,32 @@
 package views
 
 import (
+	"github.com/charmbracelet/lipgloss"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
 )
 
 func Help(m *models.AppModel) string {
-	helpText := `
-		Grind 75 CLI Help
+	if !m.Help.TableInitialized {
+		return "Loading..."
+	}
 
-		Navigation:
-		- From Home View:
-		  - Press 's' to go to Settings View
-		  - Press '?' to go to Help View
-		  - Press 'q' to quit the application
-		- Page Navigation:
-		  - Use 'up' and 'down' arrow keys to scroll through content if applicable
-		  - Press 'space' to select options
+	title := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("205")).
+		Padding(1, 0).
+		Render("Help & Keybindings")
 
-		- From Settings View:
-		  - Press 'esc' to return to Home View
+	baseStyle := lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240"))
 
-		- From Help View:
-		  - Press 'esc' to return to Home View
+	tableStr := baseStyle.Render(m.Help.Table.View())
 
-		General Commands:
-		- 'ctrl+c': Quit the application from any view
+	footer := "\n(Press q or esc to return to Home)"
 
-		Enjoy using Grind 75 CLI!
-		`
-	return helpText
+	return lipgloss.JoinVertical(lipgloss.Left,
+		title,
+		tableStr,
+		footer,
+	)
 }

@@ -19,7 +19,8 @@ func Base(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			return m, nil
 		case "?":
 			m.CurrentView = models.HelpPath
-			return m, nil
+			// Call Help with nil msg to ensure initialization runs immediately
+			return Help(m, nil)
 		}
 	}
 

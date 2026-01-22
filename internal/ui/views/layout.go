@@ -13,7 +13,6 @@ func Layout(m *models.AppModel) string {
 		Padding(1).
 		Render("Grind 75 CLI")
 
-	// Body selection
 	var body string
 	switch m.CurrentView {
 	case models.HomePath:
@@ -26,11 +25,8 @@ func Layout(m *models.AppModel) string {
 		body = "Unknown View"
 	}
 
-	// Wrapper
 	return lipgloss.JoinVertical(lipgloss.Left,
 		header,
 		body,
-		"",
-		"(q to quit, s for settings, ? for help)",
 	)
 }

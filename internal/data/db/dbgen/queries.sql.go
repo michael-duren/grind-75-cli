@@ -228,20 +228,21 @@ func (q *Queries) ListDifficulties(ctx context.Context) ([]DifficultyLevel, erro
 }
 
 const listPendingReviews = `-- name: ListPendingReviews :many
-SELECT r.id, r.problem_id, r.review_date, r.completed, r.created_at, p.title, p.slug FROM reviews r
+SELECT r.id, r.problem_id, r.review_date, r.completed, r.created_at, r.notes, p.title, p.slug FROM reviews r
 JOIN problems p ON r.problem_id = p.id
 WHERE r.completed = 0 AND r.review_date <= ?
 ORDER BY r.review_date
 `
 
 type ListPendingReviewsRow struct {
-	ID         int64     `db:"id" json:"id"`
-	ProblemID  int64     `db:"problem_id" json:"problem_id"`
-	ReviewDate time.Time `db:"review_date" json:"review_date"`
-	Completed  bool      `db:"completed" json:"completed"`
-	CreatedAt  time.Time `db:"created_at" json:"created_at"`
-	Title      string    `db:"title" json:"title"`
-	Slug       string    `db:"slug" json:"slug"`
+	ID         int64          `db:"id" json:"id"`
+	ProblemID  int64          `db:"problem_id" json:"problem_id"`
+	ReviewDate time.Time      `db:"review_date" json:"review_date"`
+	Completed  bool           `db:"completed" json:"completed"`
+	CreatedAt  time.Time      `db:"created_at" json:"created_at"`
+	Notes      sql.NullString `db:"notes" json:"notes"`
+	Title      string         `db:"title" json:"title"`
+	Slug       string         `db:"slug" json:"slug"`
 }
 
 func (q *Queries) ListPendingReviews(ctx context.Context, reviewDate time.Time) ([]ListPendingReviewsRow, error) {
@@ -259,6 +260,7 @@ func (q *Queries) ListPendingReviews(ctx context.Context, reviewDate time.Time) 
 			&i.ReviewDate,
 			&i.Completed,
 			&i.CreatedAt,
+			&i.Notes,
 			&i.Title,
 			&i.Slug,
 		); err != nil {

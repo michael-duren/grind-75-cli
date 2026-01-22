@@ -36,11 +36,12 @@ type Reminder struct {
 }
 
 type Review struct {
-	ID         int64     `db:"id" json:"id"`
-	ProblemID  int64     `db:"problem_id" json:"problem_id"`
-	ReviewDate time.Time `db:"review_date" json:"review_date"`
-	Completed  bool      `db:"completed" json:"completed"`
-	CreatedAt  time.Time `db:"created_at" json:"created_at"`
+	ID         int64          `db:"id" json:"id"`
+	ProblemID  int64          `db:"problem_id" json:"problem_id"`
+	ReviewDate time.Time      `db:"review_date" json:"review_date"`
+	Completed  bool           `db:"completed" json:"completed"`
+	CreatedAt  time.Time      `db:"created_at" json:"created_at"`
+	Notes      sql.NullString `db:"notes" json:"notes"`
 }
 
 type Topic struct {

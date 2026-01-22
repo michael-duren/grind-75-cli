@@ -10,3 +10,7 @@ run::
 # aka run TUI while using less on a log file
 debug:
 	@go run cmd/main.go 2> debug.log & tail -f debug
+
+# generate sqlc files
+sqlc:
+	@sqlc generate -f internal/data/db/sqlc.yaml

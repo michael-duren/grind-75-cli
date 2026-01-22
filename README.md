@@ -149,6 +149,8 @@ custom_problem_set:
   # These override grind_plan settings when enabled
   weeks: 12
   hours_per_week: 6
+logger:
+  debug: false
 ```
 
 ### Default Example
@@ -171,6 +173,8 @@ reminders:
   struggle_days_before: 1
 custom_problem_set:
   enabled: false
+logger:
+  debug: false
 ```
 
 ## Design
@@ -215,6 +219,12 @@ Probles must be in a JSON file in the following format located at `~/.g7c/proble
 ```
 
 ## Troubleshooting
+
+### Logger
+
+You can check log files at `~/.g7c/logs/`.
+By default it will only log `WARNING` & `ERROR` level logs.
+To turn on debugging update your config file.
 
 **Email reminders not sending?**
 

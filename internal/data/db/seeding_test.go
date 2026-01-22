@@ -1,4 +1,4 @@
-package db_test
+package db
 
 import (
 	"context"
@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/michael-duren/grind-75-cli/db"
-	gen "github.com/michael-duren/grind-75-cli/db/gen"
+	dbgen "github.com/michael-duren/grind-75-cli/internal/data/db/gen"
 )
 
 func TestSeed(t *testing.T) {
@@ -35,11 +34,11 @@ func TestSeed(t *testing.T) {
 	ctx := context.Background()
 
 	// Run Seed
-	if err := db.Seed(ctx, dbConn); err != nil {
+	if err := Seed(ctx, dbConn); err != nil {
 		t.Fatalf("Seed failed: %v", err)
 	}
 
-	queries := gen.New(dbConn)
+	queries := dbgen.New(dbConn)
 
 	// Verify problems count (should be 169 based on default json usually, or around 75+extended)
 	// problems.json has 828 lines, likely ~75-80 items?

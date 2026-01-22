@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
-	gen "github.com/michael-duren/grind-75-cli/db/gen"
+	dbgen "github.com/michael-duren/grind-75-cli/internal/data/db/gen"
 	"github.com/pressly/goose/v3"
 )
 
@@ -53,7 +53,7 @@ func InitDB(dbPath string) (*sql.DB, error) {
 }
 
 func checkAndSeed(db *sql.DB) error {
-	q := gen.New(db)
+	q := dbgen.New(db)
 	ctx := context.Background()
 
 	// Check if any problems exist

@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/michael-duren/grind-75-cli/data"
-	gen "github.com/michael-duren/grind-75-cli/db/gen"
+	"github.com/michael-duren/grind-75-cli/internal/data"
+	dbgen "github.com/michael-duren/grind-75-cli/internal/data/db/gen"
 )
 
 // Seed populates the database with the default Grind 75 questions.
 func Seed(ctx context.Context, db *sql.DB) error {
-	queries := gen.New(db)
+	queries := dbgen.New(db)
 
 	questions, err := data.LoadDefaultQuestions()
 	if err != nil {
@@ -34,7 +34,7 @@ func Seed(ctx context.Context, db *sql.DB) error {
 		// Ensure difficulty is valid (simple map check or just insert)
 		// We trust the JSON matches 'Easy', 'Medium', 'Hard'
 
-		err := qtx.CreateProblem(ctx, gen.CreateProblemParams{
+		err := qtx.CreateProblem(ctx, dbgen.CreateProblemParams{
 			ID:           int64(q.ID),
 			Slug:         q.Slug,
 			Title:        q.Title,
@@ -53,14 +53,14 @@ func Seed(ctx context.Context, db *sql.DB) error {
 
 		// Insert primary topic
 		if q.Topic != "" {
-			err = qtx.CreateTopic(ctx, gen.CreateTopicParams{
+			err = qtx.CreateTopic(ctx, dbgen.CreateTopicParams{
 				ID:   q.Topic,
 				Name: q.Topic,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create topic %s: %w", q.Topic, err)
 			}
-			err = qtx.LinkProblemTopic(ctx, gen.LinkProblemTopicParams{
+			err = qtx.LinkProblemTopic(ctx, dbgen.LinkProblemTopicParams{
 				ProblemID: int64(q.ID),
 				TopicID:   q.Topic,
 			})
@@ -71,14 +71,14 @@ func Seed(ctx context.Context, db *sql.DB) error {
 
 		// Insert routines as topics too?
 		for _, routine := range q.Routines {
-			err = qtx.CreateTopic(ctx, gen.CreateTopicParams{
+			err = qtx.CreateTopic(ctx, dbgen.CreateTopicParams{
 				ID:   routine,
 				Name: routine,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create routine topic %s: %w", routine, err)
 			}
-			err = qtx.LinkProblemTopic(ctx, gen.LinkProblemTopicParams{
+			err = qtx.LinkProblemTopic(ctx, dbgen.LinkProblemTopicParams{
 				ProblemID: int64(q.ID),
 				TopicID:   routine,
 			})
@@ -91,12 +91,12 @@ func Seed(ctx context.Context, db *sql.DB) error {
 		// We use UpsertUserProgress but that takes params.
 		// Wait, user_progress might be empty initially.
 		// We can insert with default status 'New'.
-		// The queries.sql had UpsertUserProgress. Let's use it or add a generic init.
+		// The queries.sql had UpsertUserProgress. Let's use it or add a dbgeneric init.
 		// Actually, we probably don't need to seed user_progress for ALL problems immediately,
 		// or maybe we do to simplify querying "New" problems.
 		// Let's seed it as 'New'.
 
-		err = qtx.UpsertUserProgress(ctx, gen.UpsertUserProgressParams{
+		err = qtx.UpsertUserProgress(ctx, dbgen.UpsertUserProgressParams{
 			ProblemID:       int64(q.ID),
 			Status:          "New",
 			LastAttemptedAt: sql.NullTime{}, // Valid: false

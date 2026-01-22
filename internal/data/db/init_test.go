@@ -1,13 +1,10 @@
-package db_test
+package db
 
 import (
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/michael-duren/grind-75-cli/db"
-	gen "github.com/michael-duren/grind-75-cli/db/gen"
 )
 
 func TestInitDB(t *testing.T) {
@@ -21,14 +18,14 @@ func TestInitDB(t *testing.T) {
 	dbPath := filepath.Join(tempDir, "test.db")
 
 	// InitDB should create DB, run migrations, and seed
-	database, err := db.InitDB(dbPath)
+	database, err := InitDB(dbPath)
 	if err != nil {
 		t.Fatalf("InitDB failed: %v", err)
 	}
 	defer database.Close()
 
 	// Verify tables exist (by querying problems)
-	q := gen.New(database)
+	q := New(database)
 	probs, err := q.ListProblems(context.Background())
 	if err != nil {
 		t.Fatalf("ListProblems failed: %v", err)
@@ -39,7 +36,7 @@ func TestInitDB(t *testing.T) {
 	}
 
 	// Verify idempotency (run InitDB again)
-	database2, err := db.InitDB(dbPath)
+	database2, err := InitDB(dbPath)
 	if err != nil {
 		t.Fatalf("Second InitDB failed: %v", err)
 	}

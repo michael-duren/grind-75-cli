@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
+	"time"
 
 	"fmt"
 	"os/exec"
@@ -13,6 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/michael-duren/grind-75-cli/internal/data/db/dbgen"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
+	"github.com/michael-duren/grind-75-cli/internal/ui/theme"
 	"github.com/michael-duren/grind-75-cli/internal/utils"
 )
 
@@ -59,12 +62,7 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			}
 		}
 
-		// Calculate height, account for header (2), footer (1), help text (2) + generous padding (5) = 10
-		// Better to be safe to avoid overflow
-		tableHeight := m.Height - 10
-		if tableHeight < 5 {
-			tableHeight = 5 // Minimum height
-		}
+		tableHeight := max(m.Height-10, 5)
 
 		t := table.New(
 			table.WithColumns(columns),
@@ -76,13 +74,16 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		s := table.DefaultStyles()
 		s.Header = s.Header.
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240")).
+			BorderForeground(theme.ColorTextSub).
 			BorderBottom(true).
-			Bold(false)
+			Bold(true).
+			Foreground(theme.ColorBrand)
+
 		s.Selected = s.Selected.
-			Foreground(lipgloss.Color("229")).
-			Background(lipgloss.Color("57")).
+			Foreground(theme.ColorTextMain).
+			Background(theme.ColorBrand).
 			Bold(false)
+
 		t.SetStyles(s)
 
 		m.Home.Table = t
@@ -96,17 +97,47 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		case "q":
 			// In Home view, 'q' also quits
 			return m, tea.Quit
-		case "space":
-			if m.Home.SelectedCol == 1 { // Problem column
-				selectedRow := m.Home.Table.SelectedRow()
-				// Find problem by title (naive, better to track index/ID)
-				// Since rows match index of m.Home.Problems, we can use SelectedRow index
-				idx := m.Home.Table.Cursor()
-				if idx >= 0 && idx < len(m.Home.Problems) {
-					url := m.Home.Problems[idx].URL
-					return m, openBrowser(url)
+		case " ":
+			// Toggle completion status
+			idx := m.Home.Table.Cursor()
+			if idx >= 0 && idx < len(m.Home.Problems) {
+				p := m.Home.Problems[idx]
+				newStatus := "completed"
+				if p.Status == "completed" {
+					newStatus = "uncompleted" // or "pending" depending on logic, effectively not completed
 				}
-				slog.Debug("Opening browser for problem", "row", selectedRow)
+
+				// Update DB
+				err := m.Services.Queries().UpsertUserProgress(context.Background(), dbgen.UpsertUserProgressParams{
+					ProblemID:       p.ProblemID,
+					Status:          newStatus,
+					LastAttemptedAt: sql.NullTime{Time: time.Now(), Valid: true},
+					Attempts:        p.Attempts + 1, // Maybe don't increment attempts on unchecked? debating
+				})
+
+				if err != nil {
+					slog.Error("Failed to update status", "error", err)
+				} else {
+					// Optimistic update of UI
+					m.Home.Problems[idx].Status = newStatus
+					// Re-render rows needed.
+					// For now, simpler to mark TableInitialized false to force re-render on next update loop
+					// or manually update row. manual update is better.
+					rows := m.Home.Table.Rows()
+					statusIcon := " "
+					if newStatus == "completed" {
+						statusIcon = "✅"
+					}
+					rows[idx][0] = statusIcon
+					m.Home.Table.SetRows(rows)
+				}
+			}
+		case "o":
+			// Open in browser
+			idx := m.Home.Table.Cursor()
+			if idx >= 0 && idx < len(m.Home.Problems) {
+				url := m.Home.Problems[idx].URL
+				return m, openBrowser(url)
 			}
 		case "right", "l":
 			m.Home.SelectedCol = (m.Home.SelectedCol + 1) % 6 // 6 columns
@@ -117,10 +148,7 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
-		h := msg.Height - 10
-		if h < 5 {
-			h = 5
-		}
+		h := max(msg.Height-10, 5)
 		m.Home.Table.SetHeight(h)
 	}
 
@@ -215,4 +243,36 @@ func GetUserProblemsWithRelations(m *models.AppModel, ctx context.Context) ([]mo
 	}
 
 	return result, nil
+}
+
+func saveNotes(m *models.AppModel, problemID int64, notes string) {
+	ctx := context.Background()
+	db := m.Services.DB()
+
+	// Find review ID from model
+	var reviewID int64
+	for _, p := range m.Home.Problems {
+		if p.ProblemID == problemID {
+			if len(p.Reviews) > 0 {
+				reviewID = p.Reviews[0].ID
+			}
+			break
+		}
+	}
+
+	if reviewID != 0 {
+		// Update existing review
+		query := `UPDATE reviews SET notes = ?, review_date = ? WHERE id = ?`
+		_, err := db.ExecContext(ctx, query, notes, time.Now(), reviewID)
+		if err != nil {
+			slog.Error("Failed to update review notes", "error", err)
+		}
+	} else {
+		// Create new review with notes
+		query := `INSERT INTO reviews (problem_id, review_date, notes) VALUES (?, ?, ?)`
+		_, err := db.ExecContext(ctx, query, problemID, time.Now(), notes)
+		if err != nil {
+			slog.Error("Failed to create review with notes", "error", err)
+		}
+	}
 }

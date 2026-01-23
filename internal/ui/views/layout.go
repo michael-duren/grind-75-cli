@@ -3,15 +3,23 @@ package views
 import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
+	"github.com/michael-duren/grind-75-cli/internal/ui/theme"
 )
 
 func Layout(m *models.AppModel) string {
 	// Header
-	header := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		Padding(1).
+	header := theme.
+		AppHeader.
+		Width(m.Width).
 		Render("Grind 75 CLI")
+
+	if m.Error != "" {
+		lipgloss.JoinVertical(lipgloss.Left,
+			header,
+			theme.ErrorStyle.Render(m.Error),
+		)
+
+	}
 
 	var body string
 	switch m.CurrentView {
@@ -25,8 +33,18 @@ func Layout(m *models.AppModel) string {
 		body = "Unknown View"
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left,
+	// Wrapper
+	content := lipgloss.JoinVertical(lipgloss.Left,
 		header,
 		body,
+		"",
+		"(q to quit, s for settings, ? for help)",
 	)
+
+	// Apply background to the whole view
+	return lipgloss.NewStyle().
+		Background(theme.ColorBgLeetCode).
+		Width(m.Width).
+		Height(m.Height).
+		Render(content)
 }

@@ -8,6 +8,7 @@ type KeyMap struct {
 	Left     key.Binding
 	Right    key.Binding
 	Space    key.Binding
+	Open     key.Binding
 	Enter    key.Binding
 	Help     key.Binding
 	Quit     key.Binding
@@ -21,7 +22,7 @@ func (k KeyMap) ShortHelp() []key.Binding {
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Left, k.Right}, // Navigation
-		{k.Space, k.Enter},              // Actions
+		{k.Space, k.Open, k.Enter},      // Actions
 		{k.Settings, k.Help, k.Quit},    // App
 	}
 }
@@ -45,7 +46,11 @@ var Keys = KeyMap{
 	),
 	Space: key.NewBinding(
 		key.WithKeys("space"),
-		key.WithHelp("space", "select/open"),
+		key.WithHelp("space", "toggle complete"),
+	),
+	Open: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "open browser"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),

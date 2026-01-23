@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
+	"github.com/michael-duren/grind-75-cli/internal/ui/theme"
 )
 
 func Help(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
@@ -45,12 +46,13 @@ func Help(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		s := table.DefaultStyles()
 		s.Header = s.Header.
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240")).
+			BorderForeground(theme.ColorTextSub).
 			BorderBottom(true).
-			Bold(false)
+			Bold(true).
+			Foreground(theme.ColorBrand)
 		s.Selected = s.Selected.
-			Foreground(lipgloss.Color("229")).
-			Background(lipgloss.Color("57")).
+			Foreground(theme.ColorTextMain).
+			Background(theme.ColorBrand).
 			Bold(false)
 		t.SetStyles(s)
 

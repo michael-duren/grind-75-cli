@@ -3,6 +3,7 @@ package views
 import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
+	"github.com/michael-duren/grind-75-cli/internal/ui/theme"
 )
 
 func Help(m *models.AppModel) string {
@@ -10,11 +11,7 @@ func Help(m *models.AppModel) string {
 		return "Loading..."
 	}
 
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		Padding(1, 0).
-		Render("Help & Keybindings")
+	title := theme.ViewTitle.Render("Help & Keybindings")
 
 	baseStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).

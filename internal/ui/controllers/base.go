@@ -16,7 +16,7 @@ func Base(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			return m, tea.Quit
 		case "s":
 			m.CurrentView = models.SettingsPath
-			return m, nil
+			return Settings(m, nil)
 		case "?":
 			m.CurrentView = models.HelpPath
 			// Call Help with nil msg to ensure initialization runs immediately

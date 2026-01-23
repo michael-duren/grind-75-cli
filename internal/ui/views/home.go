@@ -91,6 +91,15 @@ func Home(m *models.AppModel) string {
 		detailsView = "Select a problem..."
 	}
 
+	helpView := m.Home.CommandBar.View()
+
+	tableWithHelp := lipgloss.JoinVertical(
+		lipgloss.Left,
+		tableView,
+		"",
+		helpView,
+	)
+
 	// Container styles
 	detailsStyle := lipgloss.NewStyle().
 		Width(detailsWidth).
@@ -102,13 +111,13 @@ func Home(m *models.AppModel) string {
 	if stackVertical {
 		detailsStyle = detailsStyle.Height(10)
 		return lipgloss.JoinVertical(lipgloss.Left,
-			tableView,
+			tableWithHelp,
 			detailsStyle.Render(detailsView),
 		)
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
-		tableView,
+		tableWithHelp,
 		detailsStyle.Render(detailsView),
 	)
 }

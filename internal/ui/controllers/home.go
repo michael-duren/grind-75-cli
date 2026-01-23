@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"time"
 
@@ -13,26 +12,22 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/michael-duren/grind-75-cli/internal/data/db/dbgen"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
+	"github.com/michael-duren/grind-75-cli/internal/ui/services"
 	"github.com/michael-duren/grind-75-cli/internal/ui/theme"
-	"github.com/michael-duren/grind-75-cli/internal/utils"
-)
-
-const (
-	Completed  = "Completed"
-	New        = "New"
-	Struggling = "Struggling"
 )
 
 func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 	slog.Debug("Home Controller Received Message", "msg", msg)
+	// TODO: come back and look more into context considerations
+	ctx := context.Background()
+	problemService := services.NewProblemService(m, ctx)
 
 	// Refresh data if needed (naive approach: refresh on every enter for now, but check if we need to re-init table)
 	// Ideally we should have a separate message for data refreshing
 	// TODO: look into this
 	if m.Services != nil {
-		problems, err := GetUserProblemsWithRelations(m, context.Background())
+		problems, err := problemService.GetUserProblemsWithRelations()
 		if err != nil {
 			m.Error = "Failed to get user problems with relations"
 			slog.Error("Failed to get user problems with relations", "error", err)
@@ -41,7 +36,6 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		m.Home.Problems = problems
 	}
 
-	// Initialize table if not done or if we want to refresh rows
 	if !m.Home.TableInitialized {
 		intializeTable(m)
 	}
@@ -54,7 +48,20 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			// In Home view, 'q' also quits
 			return m, tea.Quit
 		case "c":
-			toggleComplete(m)
+			idx := m.Home.Table.Cursor()
+			if idx < 0 || idx > len(m.Home.Problems) {
+				m.Error = "index was out of bounds in home table"
+				return m, nil
+			}
+			p := m.Home.Problems[idx]
+			problemService.SetProblemStatus(services.ProblemCompleted, p)
+
+			m.Home.Problems[idx].Status = string(services.ProblemCompleted)
+			rows := m.Home.Table.Rows()
+
+			rows[idx][0] = getStatusIcon(services.ProblemCompleted)
+			m.Home.Table.SetRows(rows)
+			// toggleComplete(m)
 		case "o":
 			idx := m.Home.Table.Cursor()
 			if idx >= 0 && idx < len(m.Home.Problems) {
@@ -98,53 +105,16 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 	return m, cmd
 }
 
-func getStatusIcon(status string) string {
+func getStatusIcon(status services.ProblemStatus) string {
 	switch status {
-	case Completed:
+	case services.ProblemCompleted:
 		return "✅"
-	case Struggling:
+	case services.StrugglingProblem:
 		return "⚠️"
-	case New:
+	case services.NewProblem:
 		return "🆕"
 	default:
 		return " "
-	}
-}
-
-func toggleComplete(m *models.AppModel) {
-	idx := m.Home.Table.Cursor()
-	if idx >= 0 && idx < len(m.Home.Problems) {
-		p := m.Home.Problems[idx]
-		newStatus := Completed
-		if p.Status == Completed {
-			newStatus = New
-		}
-		if p.Attempts > 0 {
-			p.Attempts++
-		} else {
-			p.Attempts = 1
-		}
-
-		err := m.Services.Queries().UpsertUserProgress(context.Background(), dbgen.UpsertUserProgressParams{
-			ProblemID:       p.ProblemID,
-			Status:          newStatus,
-			LastAttemptedAt: sql.NullTime{Time: time.Now(), Valid: true},
-			Attempts:        p.Attempts,
-		})
-
-		if err != nil {
-			slog.Error("Failed to update status", "error", err)
-			return
-		}
-		// Optimistic update of UI
-		m.Home.Problems[idx].Status = newStatus
-		// Re-render rows needed.
-		// For now, simpler to mark TableInitialized false to force re-render on next update loop
-		// or manually update row. manual update is better.
-		rows := m.Home.Table.Rows()
-
-		rows[idx][0] = getStatusIcon(newStatus)
-		m.Home.Table.SetRows(rows)
 	}
 }
 
@@ -166,7 +136,7 @@ func intializeTable(m *models.AppModel) {
 		}
 
 		rows[i] = table.Row{
-			getStatusIcon(p.Status),
+			getStatusIcon(services.ProblemStatus(p.Status)),
 			p.Title,
 			p.DifficultyName,
 			topic,
@@ -221,75 +191,6 @@ func openBrowser(url string) tea.Cmd {
 		}
 		return nil
 	}
-}
-
-func GetUserProblemsWithRelations(m *models.AppModel, ctx context.Context) ([]models.UserProblemWithRelations, error) {
-	// Get all problems
-	queries := m.Services.Queries()
-	problems, err := queries.ListUserProblems(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get all reviews
-	reviews, err := queries.GetAllProblemReviews(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get all topics
-	topicRows, err := queries.GetAllProblemTopics(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Group reviews by problem_id
-	reviewMap := make(map[int64][]dbgen.Review)
-	for _, r := range reviews {
-		reviewMap[r.ProblemID] = append(reviewMap[r.ProblemID], dbgen.Review{
-			ID:         r.ID,
-			ReviewDate: r.ReviewDate,
-			Completed:  r.Completed,
-			Notes:      r.Notes,
-		})
-	}
-
-	// Group topics by problem_id
-	topicMap := make(map[int64][]dbgen.Topic)
-	for _, t := range topicRows {
-		topicMap[t.ProblemID] = append(topicMap[t.ProblemID], dbgen.Topic{
-			ID:   t.ID,
-			Name: t.Name,
-		})
-	}
-
-	// Combine everything
-	result := make([]models.UserProblemWithRelations, len(problems))
-	for i, p := range problems {
-		result[i] = models.UserProblemWithRelations{
-			ProblemID:       p.ProblemID,
-			Slug:            p.Slug,
-			Title:           p.Title,
-			URL:             p.Url,
-			Duration:        p.Duration,
-			DifficultyID:    utils.CoerceFromNullString(p.DifficultyID),
-			DifficultyName:  utils.CoerceFromNullString(p.DifficultyName),
-			Status:          utils.CoerceFromNullString(p.Status),
-			LastAttemptedAt: utils.CoerceFromNullTime(p.LastAttemptedAt),
-			Attempts:        utils.CoerceFromNullInt64(p.Attempts),
-			Topics:          topicMap[p.ProblemID],  // Attach topics here
-			Reviews:         reviewMap[p.ProblemID], // Attach reviews here
-		}
-
-		if result[i].Topics == nil {
-			result[i].Topics = []dbgen.Topic{}
-		}
-		if result[i].Reviews == nil {
-			result[i].Reviews = []dbgen.Review{}
-		}
-	}
-
-	return result, nil
 }
 
 func saveNotes(m *models.AppModel, problemID int64, notes string) {

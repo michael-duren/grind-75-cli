@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/michael-duren/grind-75-cli/internal/data/db/dbgen"
+	"github.com/michael-duren/grind-75-cli/internal/ui/views/components"
 )
 
 type UserProblemWithRelations struct {
@@ -33,6 +34,8 @@ type HomeModel struct {
 	NotesInput      textarea.Model
 	Editing         bool
 	ActiveProblemID int64
+
+	CommandBar components.CommandBar
 }
 
 func NewHomeModel() *HomeModel {
@@ -41,5 +44,12 @@ func NewHomeModel() *HomeModel {
 	return &HomeModel{
 		Problems:   []UserProblemWithRelations{},
 		NotesInput: ta,
+		CommandBar: components.NewCommandBar([]components.Command{
+			{Key: "↑/↓", Desc: "navigate"},
+			{Key: "c", Desc: "complete"},
+			{Key: "o", Desc: "open"},
+			{Key: "?", Desc: "help"},
+			{Key: "q", Desc: "quit"},
+		}),
 	}
 }

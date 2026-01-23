@@ -33,10 +33,7 @@ func InitLogger(logDir string, debug bool) error {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}
 
-	w := io.MultiWriter(os.Stdout, f)
-
-	// Initialize logger
-	charmHandler := log.New(w)
+	charmHandler := log.New(io.Writer(f))
 	charmHandler.SetReportCaller(true)
 
 	if debug {

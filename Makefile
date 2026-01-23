@@ -1,15 +1,18 @@
 build:
 	@echo "Building CLI..."
-	@go build -o dol cmd/cli/main.go
+	@go build -o g7c cmd/main.go
 
-# Run the TUI application
+# Run the TUI application (compiles and runs)
 run::
 	@go run cmd/main.go
 
-# Run the TUI with debugging enabled
-# aka run TUI while using less on a log file
+# Build and run the binary (faster if already built, or just cleaner)
+run-bin: build
+	@./g7c
+
+# watch the log files
 debug:
-	@go run cmd/main.go 2> debug.log & tail -f debug
+	@less +G "$$(ls -t ~/.g7c/logs/g7c-*.log | head -n 1)"
 
 # generate sqlc files
 sqlc:

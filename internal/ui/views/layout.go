@@ -14,10 +14,10 @@ func Layout(m *models.AppModel) string {
 		Render("Grind 75 CLI")
 
 	if m.Error != "" {
-		lipgloss.JoinVertical(lipgloss.Left,
-			header,
-			theme.ErrorStyle.Render(m.Error),
-		)
+		// lipgloss.JoinVertical(lipgloss.Left,
+		// 	header,
+		// 	theme.ErrorStyle.Render(m.Error),
+		// )
 
 	}
 
@@ -37,13 +37,12 @@ func Layout(m *models.AppModel) string {
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		header,
 		body,
-		"",
 		"(q to quit, s for settings, ? for help)",
 	)
 
 	// Apply background to the whole view
 	return lipgloss.NewStyle().
-		Background(theme.ColorBgLeetCode).
+		// Background(theme.ColorBgLeetCode).
 		Width(m.Width).
 		Height(m.Height).
 		Render(content)

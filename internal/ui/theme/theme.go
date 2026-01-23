@@ -22,9 +22,8 @@ var (
 	// App Header
 	AppHeader = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(ColorBrand).
-			Background(ColorBgDark).
-			Padding(1, 0, 1, 1)
+			Foreground(ColorTextMain).
+			Padding(0, 0, 1, 0)
 
 	// View Titles
 	ViewTitle = lipgloss.NewStyle().

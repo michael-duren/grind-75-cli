@@ -19,11 +19,18 @@ import (
 	"github.com/michael-duren/grind-75-cli/internal/utils"
 )
 
+const (
+	Completed  = "Completed"
+	New        = "New"
+	Struggling = "Struggling"
+)
+
 func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 	slog.Debug("Home Controller Received Message", "msg", msg)
 
 	// Refresh data if needed (naive approach: refresh on every enter for now, but check if we need to re-init table)
 	// Ideally we should have a separate message for data refreshing
+	// TODO: look into this
 	if m.Services != nil {
 		problems, err := GetUserProblemsWithRelations(m, context.Background())
 		if err != nil {
@@ -36,58 +43,7 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 
 	// Initialize table if not done or if we want to refresh rows
 	if !m.Home.TableInitialized {
-		columns := []table.Column{
-			{Title: "Status", Width: 10},
-			{Title: "Problem", Width: 30},
-			{Title: "Difficulty", Width: 10},
-			{Title: "Topic", Width: 15},
-			{Title: "Time", Width: 10},
-			{Title: "Attempts", Width: 8},
-		}
-
-		rows := make([]table.Row, len(m.Home.Problems))
-		for i, p := range m.Home.Problems {
-			topic := ""
-			if len(p.Topics) > 0 {
-				topic = p.Topics[0].Name
-			}
-
-			rows[i] = table.Row{
-				p.Status,
-				p.Title,
-				p.DifficultyName,
-				topic,
-				fmt.Sprintf("%d mins", p.Duration),
-				fmt.Sprintf("%d", p.Attempts),
-			}
-		}
-
-		tableHeight := max(m.Height-10, 5)
-
-		t := table.New(
-			table.WithColumns(columns),
-			table.WithRows(rows),
-			table.WithFocused(true),
-			table.WithHeight(tableHeight),
-		)
-
-		s := table.DefaultStyles()
-		s.Header = s.Header.
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(theme.ColorTextSub).
-			BorderBottom(true).
-			Bold(true).
-			Foreground(theme.ColorBrand)
-
-		s.Selected = s.Selected.
-			Foreground(theme.ColorTextMain).
-			Background(theme.ColorBrand).
-			Bold(false)
-
-		t.SetStyles(s)
-
-		m.Home.Table = t
-		m.Home.TableInitialized = true
+		intializeTable(m)
 	}
 
 	var cmd tea.Cmd
@@ -97,43 +53,9 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		case "q":
 			// In Home view, 'q' also quits
 			return m, tea.Quit
-		case " ":
-			// Toggle completion status
-			idx := m.Home.Table.Cursor()
-			if idx >= 0 && idx < len(m.Home.Problems) {
-				p := m.Home.Problems[idx]
-				newStatus := "completed"
-				if p.Status == "completed" {
-					newStatus = "uncompleted" // or "pending" depending on logic, effectively not completed
-				}
-
-				// Update DB
-				err := m.Services.Queries().UpsertUserProgress(context.Background(), dbgen.UpsertUserProgressParams{
-					ProblemID:       p.ProblemID,
-					Status:          newStatus,
-					LastAttemptedAt: sql.NullTime{Time: time.Now(), Valid: true},
-					Attempts:        p.Attempts + 1, // Maybe don't increment attempts on unchecked? debating
-				})
-
-				if err != nil {
-					slog.Error("Failed to update status", "error", err)
-				} else {
-					// Optimistic update of UI
-					m.Home.Problems[idx].Status = newStatus
-					// Re-render rows needed.
-					// For now, simpler to mark TableInitialized false to force re-render on next update loop
-					// or manually update row. manual update is better.
-					rows := m.Home.Table.Rows()
-					statusIcon := " "
-					if newStatus == "completed" {
-						statusIcon = "✅"
-					}
-					rows[idx][0] = statusIcon
-					m.Home.Table.SetRows(rows)
-				}
-			}
+		case "c":
+			toggleComplete(m)
 		case "o":
-			// Open in browser
 			idx := m.Home.Table.Cursor()
 			if idx >= 0 && idx < len(m.Home.Problems) {
 				url := m.Home.Problems[idx].URL
@@ -148,12 +70,137 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
-		h := max(msg.Height-10, 5)
-		m.Home.Table.SetHeight(h)
+		h, v := theme.Base.GetFrameSize()
+		m.Width = msg.Width
+		m.Height = msg.Height
+
+		// Layout logic for Table Width
+		totalWidth := msg.Width
+		tableWidth := totalWidth - h
+
+		// Breakpoint 100 for split view
+		if totalWidth >= 100 {
+			// Split mode: 65% for table
+			splitWidth := max(totalWidth*65/100, 65)
+			tableWidth = splitWidth - h
+		} else {
+			// Stacked mode
+			tableWidth = totalWidth - h - 4
+		}
+
+		m.Home.Table.SetWidth(tableWidth)
+
+		tableHeight := max(msg.Height-v-4, 5)
+		m.Home.Table.SetHeight(tableHeight)
 	}
 
 	m.Home.Table, cmd = m.Home.Table.Update(msg)
 	return m, cmd
+}
+
+func getStatusIcon(status string) string {
+	switch status {
+	case Completed:
+		return "✅"
+	case Struggling:
+		return "⚠️"
+	case New:
+		return "🆕"
+	default:
+		return " "
+	}
+}
+
+func toggleComplete(m *models.AppModel) {
+	idx := m.Home.Table.Cursor()
+	if idx >= 0 && idx < len(m.Home.Problems) {
+		p := m.Home.Problems[idx]
+		newStatus := Completed
+		if p.Status == Completed {
+			newStatus = New
+		}
+		if p.Attempts > 0 {
+			p.Attempts++
+		} else {
+			p.Attempts = 1
+		}
+
+		err := m.Services.Queries().UpsertUserProgress(context.Background(), dbgen.UpsertUserProgressParams{
+			ProblemID:       p.ProblemID,
+			Status:          newStatus,
+			LastAttemptedAt: sql.NullTime{Time: time.Now(), Valid: true},
+			Attempts:        p.Attempts,
+		})
+
+		if err != nil {
+			slog.Error("Failed to update status", "error", err)
+			return
+		}
+		// Optimistic update of UI
+		m.Home.Problems[idx].Status = newStatus
+		// Re-render rows needed.
+		// For now, simpler to mark TableInitialized false to force re-render on next update loop
+		// or manually update row. manual update is better.
+		rows := m.Home.Table.Rows()
+
+		rows[idx][0] = getStatusIcon(newStatus)
+		m.Home.Table.SetRows(rows)
+	}
+}
+
+func intializeTable(m *models.AppModel) {
+	columns := []table.Column{
+		{Title: "Sts", Width: 4},
+		{Title: "Problem", Width: 32},
+		{Title: "Diff", Width: 8},
+		{Title: "Topic", Width: 18},
+		{Title: "Time", Width: 12},
+		{Title: "Att", Width: 4},
+	}
+
+	rows := make([]table.Row, len(m.Home.Problems))
+	for i, p := range m.Home.Problems {
+		topic := ""
+		if len(p.Topics) > 0 {
+			topic = p.Topics[0].Name
+		}
+
+		rows[i] = table.Row{
+			getStatusIcon(p.Status),
+			p.Title,
+			p.DifficultyName,
+			topic,
+			fmt.Sprintf("%d mins", p.Duration),
+			fmt.Sprintf("%d", p.Attempts),
+		}
+	}
+
+	tableHeight := max(m.Height-20, 5)
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(tableHeight),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(theme.ColorTextSub).
+		BorderBottom(true).
+		Bold(true).
+		Foreground(theme.ColorBrand)
+
+	s.Selected = s.Selected.
+		Foreground(theme.ColorTextMain).
+		Background(theme.ColorBrand).
+		Bold(false)
+
+	t.SetStyles(s)
+
+	m.Home.Table = t
+	m.Home.TableInitialized = true
 }
 
 func openBrowser(url string) tea.Cmd {

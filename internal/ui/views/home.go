@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
+	"github.com/michael-duren/grind-75-cli/internal/ui/theme"
 )
 
 func Home(m *models.AppModel) string {
@@ -12,29 +13,102 @@ func Home(m *models.AppModel) string {
 		return "Loading..."
 	}
 
-	baseStyle := lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240"))
+	// Calculate widths
+	totalWidth := m.Width
+	// Estimate table width (sum of cols + borders + padding)
+	// Cols: 4+25+8+12+6+4 = 59. Plus borders/padding ~10. Total ~70.
+	// Layout logic
+	// Minimum width required for the table to look good (sum of columns ~60 + padding)
+	minTableWidth := 72
 
-	// Render table
-	tableStr := baseStyle.Render(m.Home.Table.View())
+	tableWidth := totalWidth
+	detailsWidth := totalWidth
+	stackVertical := true
 
-	// Highlight the header of the selected column to indicate "edit mode" for that column (future feature)
-	// For now just show which column is selected for potential action
-	colHeaders := []string{"Status", "Problem", "Difficulty", "Topic", "Time", "Attempts"}
-	headerView := ""
-	for i, h := range colHeaders {
-		style := lipgloss.NewStyle().Padding(0, 1)
-		if i == m.Home.SelectedCol {
-			style = style.Foreground(lipgloss.Color("229")).Background(lipgloss.Color("57")).Bold(true)
-		}
-		headerView += style.Render(h)
+	if totalWidth >= 110 {
+		stackVertical = false
+		// Give table roughly 70% of width, but ensure it's at least minTableWidth
+		tableWidth = max(totalWidth*70/100, minTableWidth)
+		// Details gets the rest
+		detailsWidth = totalWidth - tableWidth - 2
+	} else {
+		// Stacked mode
+		tableWidth = totalWidth - 4
+		detailsWidth = totalWidth - 4
 	}
 
-	helpText := fmt.Sprintf("\nSelected Column: %s (Space to interact)\n(q to quit, s for Settings, Use Arrows/jkhl to navigate)", colHeaders[m.Home.SelectedCol])
+	// Render Table (Force width on style just in case)
+	tableView := theme.Base.Width(tableWidth).Render(m.Home.Table.View())
 
-	return lipgloss.JoinVertical(lipgloss.Left,
-		tableStr,
-		helpText,
+	// Render Details or Edit
+	var detailsView string
+
+	idx := m.Home.Table.Cursor()
+	if idx >= 0 && idx < len(m.Home.Problems) {
+		p := m.Home.Problems[idx]
+
+		if m.Home.Editing {
+			title := theme.ViewTitle.Render("Edit Notes")
+			m.Home.NotesInput.SetWidth(detailsWidth - 2)
+			m.Home.NotesInput.SetHeight(m.Height - 20) // Approx
+			input := m.Home.NotesInput.View()
+			detailsView = lipgloss.JoinVertical(lipgloss.Left, title, input, "\n(Esc to cancel, Ctrl+S to save)")
+		} else {
+			// View Mode
+			title := theme.ViewTitle.Render(p.Title)
+			info := fmt.Sprintf("Difficulty: %s\nTime: %d mins\nTopics: ", p.DifficultyName, p.Duration)
+			if len(p.Topics) > 0 {
+				for i, t := range p.Topics {
+					if i > 0 {
+						info += ", "
+					}
+					info += t.Name
+				}
+			}
+			info += "\n\n"
+
+			notes := "No notes."
+			// Find latest review notes
+			if len(p.Reviews) > 0 {
+				// Assuming reviews are ordered desc by date
+				if p.Reviews[0].Notes.Valid {
+					notes = p.Reviews[0].Notes.String
+				}
+			}
+
+			notesHeader := theme.Label.Render("Notes:")
+			notesBody := theme.Base.Render(notes)
+
+			detailsView = lipgloss.JoinVertical(lipgloss.Left,
+				title,
+				theme.Base.Render(info),
+				notesHeader,
+				notesBody,
+				"\n(Enter to edit notes, 'o' to open)",
+			)
+		}
+	} else {
+		detailsView = "Select a problem..."
+	}
+
+	// Container styles
+	detailsStyle := lipgloss.NewStyle().
+		Width(detailsWidth).
+		Height(m.Height-20).
+		Padding(1).
+		Margin(1, 0).
+		BorderForeground(theme.ColorBrand)
+
+	if stackVertical {
+		detailsStyle = detailsStyle.Height(10)
+		return lipgloss.JoinVertical(lipgloss.Left,
+			tableView,
+			detailsStyle.Render(detailsView),
+		)
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		tableView,
+		detailsStyle.Render(detailsView),
 	)
 }

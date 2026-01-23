@@ -1,3 +1,4 @@
+// internal/ui/controllers/controller.go
 package controllers
 
 import (
@@ -5,33 +6,61 @@ import (
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
 )
 
-func Base(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
+type Controller interface {
+	Update(msg tea.Msg) tea.Cmd
+	View() string
+}
+
+type Router struct {
+	model       *models.AppModel
+	controllers map[models.CurrentView]Controller
+}
+
+func NewRouter(m *models.AppModel) *Router {
+	return &Router{
+		model: m,
+		controllers: map[models.CurrentView]Controller{
+			models.HomePath:     NewHomeController(m),
+			models.SettingsPath: NewSettingsController(m),
+			models.HelpPath:     NewHelpController(m),
+		},
+	}
+}
+
+func (r *Router) Route(msg tea.Msg) tea.Cmd {
+	// Handle global messages first
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.Width = msg.Width
-		m.Height = msg.Height
+		r.model.Width = msg.Width
+		r.model.Height = msg.Height
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
-			return m, tea.Quit
+			return tea.Quit
 		case "s":
-			m.CurrentView = models.SettingsPath
-			return Settings(m, nil)
+			r.model.CurrentView = models.SettingsPath
+			return r.controllers[models.SettingsPath].Update(nil)
 		case "?":
-			m.CurrentView = models.HelpPath
-			// Call Help with nil msg to ensure initialization runs immediately
-			return Help(m, nil)
+			r.model.CurrentView = models.HelpPath
+			return r.controllers[models.HelpPath].Update(nil)
 		}
 	}
 
-	switch m.CurrentView {
-	case models.HomePath:
-		return Home(m, msg)
-	case models.SettingsPath:
-		return Settings(m, msg)
-	case models.HelpPath:
-		return Help(m, msg)
+	// Route to current controller
+	controller := r.controllers[r.model.CurrentView]
+	if controller == nil {
+		r.model.CurrentView = models.HomePath
+		controller = r.controllers[models.HomePath]
 	}
 
-	return m, nil
+	return controller.Update(msg)
+}
+
+func (r *Router) View() string {
+	controller := r.controllers[r.model.CurrentView]
+	if controller == nil {
+		return "Unknown view"
+	}
+	return controller.View()
 }

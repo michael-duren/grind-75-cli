@@ -5,29 +5,29 @@ import (
 	"github.com/michael-duren/grind-75-cli/internal/data/db"
 	"github.com/michael-duren/grind-75-cli/internal/ui/controllers"
 	"github.com/michael-duren/grind-75-cli/internal/ui/models"
-	"github.com/michael-duren/grind-75-cli/internal/ui/views"
 )
 
-type Model struct {
-	AppModel *models.AppModel
+type App struct {
+	router *controllers.Router
 }
 
-func NewApp(services db.Service) Model {
-	return Model{
-		AppModel: models.NewAppModel(services),
+func NewApp(services db.Service) *App {
+	model := models.NewAppModel(services)
+
+	return &App{
+		router: controllers.NewRouter(model),
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (a *App) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	newModel, cmd := controllers.Base(m.AppModel, msg)
-	m.AppModel = newModel
-	return m, cmd
+func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmd := a.router.Route(msg)
+	return a, cmd
 }
 
-func (m Model) View() string {
-	return views.Layout(m.AppModel)
+func (a *App) View() string {
+	return a.router.View()
 }

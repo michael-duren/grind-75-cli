@@ -17,7 +17,22 @@ import (
 	"github.com/michael-duren/grind-75-cli/internal/ui/theme"
 )
 
-func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
+type HomeController struct {
+	model *models.AppModel
+}
+
+func NewHomeController(m *models.AppModel) Controller {
+	return &HomeController{
+		model: m,
+	}
+}
+
+func (h *HomeController) View() string {
+	return ""
+}
+
+func (h *HomeController) Update(msg tea.Msg) tea.Cmd {
+	m := h.model
 	slog.Debug("Home Controller Received Message", "msg", msg)
 	// TODO: come back and look more into context considerations
 	ctx := context.Background()
@@ -31,7 +46,7 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		if err != nil {
 			m.Error = "Failed to get user problems with relations"
 			slog.Error("Failed to get user problems with relations", "error", err)
-			return m, nil
+			return nil
 		}
 		m.Home.Problems = problems
 	}
@@ -46,12 +61,12 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 		switch msg.String() {
 		case "q":
 			// In Home view, 'q' also quits
-			return m, tea.Quit
+			return tea.Quit
 		case "c":
 			idx := m.Home.Table.Cursor()
 			if idx < 0 || idx > len(m.Home.Problems) {
 				m.Error = "index was out of bounds in home table"
-				return m, nil
+				return nil
 			}
 			p := m.Home.Problems[idx]
 			problemService.SetProblemStatus(services.ProblemCompleted, p)
@@ -66,7 +81,7 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 			idx := m.Home.Table.Cursor()
 			if idx >= 0 && idx < len(m.Home.Problems) {
 				url := m.Home.Problems[idx].URL
-				return m, openBrowser(url)
+				return openBrowser(url)
 			}
 		case "right", "l":
 			m.Home.SelectedCol = (m.Home.SelectedCol + 1) % 6 // 6 columns
@@ -102,7 +117,7 @@ func Home(m *models.AppModel, msg tea.Msg) (*models.AppModel, tea.Cmd) {
 	}
 
 	m.Home.Table, cmd = m.Home.Table.Update(msg)
-	return m, cmd
+	return cmd
 }
 
 func getStatusIcon(status services.ProblemStatus) string {
